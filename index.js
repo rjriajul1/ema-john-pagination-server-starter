@@ -11,7 +11,7 @@ app.use(express.json());
 
 
 
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.cvlwqch.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -31,8 +31,30 @@ async function run() {
     const productCollection = client.db('emaJohnDB').collection('products');
 
     app.get('/products', async(req, res) => {
-        const result = await productCollection.find().toArray();
+        const page = parseInt(req.query.page)
+        const size = parseInt(req.query.size)
+
+        const result = await productCollection.find()
+        .skip(page * size)
+        .limit(size)
+        .toArray();
         res.send(result);
+    })
+    app.get('/productsCount', async(req,res)=> {
+      const count = await productCollection.estimatedDocumentCount()
+      res.send({count})
+    })
+
+    app.post('/productsByIds', async(req,res)=> {
+      const ids = req.body;
+      const objectIds = ids.map(id=> new ObjectId(id))
+      const query = {
+        _id:{
+          $in: objectIds
+        }
+      }
+      const result = await productCollection.find(query).toArray()
+      res.send(result)
     })
 
     // Send a ping to confirm a successful connection
